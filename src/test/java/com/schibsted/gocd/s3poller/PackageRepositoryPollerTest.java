@@ -1,6 +1,7 @@
 package com.schibsted.gocd.s3poller;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.Owner;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.schibsted.gocd.s3poller.message.*;
@@ -20,7 +21,7 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PackageRepositoryPollerTest {
@@ -153,6 +154,35 @@ public class PackageRepositoryPollerTest {
         // String revision, Date timestamp, String user, String revisionComment, String trackbackUrl
         PackageRevisionMessage prevPrm = new PackageRevisionMessage("1", new Date(40000), "username", "comment", "url");
         PackageRevisionMessage prm = prp.getLatestRevisionSince(pmp, pmp, prevPrm);
+        assertEquals(new Date(50000), prm.getTimestamp());
+    }
+
+    @Test
+    public void getLatestRevisionByPagingThoughAllListings() throws Exception {
+        ObjectListing objectListingOne = mock(ObjectListing.class);
+        ObjectListing objectListingTwo = mock(ObjectListing.class);
+
+        when(client.getUrl(anyString(), anyString())).thenReturn(new URL("http://example.domain/path/to/file.zip"));
+
+        when(objectListingOne.isTruncated()).thenReturn(true);
+        when(objectListingOne.getObjectSummaries()).thenReturn(
+                getObjectsInBucket(new Date(20000)));
+
+        when(objectListingTwo.isTruncated()).thenReturn(false);
+        when(objectListingTwo.getObjectSummaries()).thenReturn(
+                getObjectsInBucket(new Date(50000)));
+
+        when(client.listObjects(anyString(), anyString())).thenReturn(objectListingOne);
+        when(client.listNextBatchOfObjects(objectListingOne)).thenReturn(objectListingTwo);
+
+        pmp.addPackageMaterialProperty(Constants.S3_BUCKET, new PackageMaterialProperty().withValue("bucket"));
+        pmp.addPackageMaterialProperty(Constants.S3_PATH, new PackageMaterialProperty().withValue("path"));
+
+        // String revision, Date timestamp, String user, String revisionComment, String trackbackUrl
+        PackageRevisionMessage prevPrm = new PackageRevisionMessage("1", new Date(40000), "username", "comment", "url");
+        PackageRevisionMessage prm = prp.getLatestRevisionSince(pmp, pmp, prevPrm);
+
+        verify(client, times(1)).listNextBatchOfObjects(any(ObjectListing.class));
         assertEquals(new Date(50000), prm.getTimestamp());
     }
 

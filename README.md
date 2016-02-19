@@ -20,6 +20,29 @@ and there must be at least one file in that folder.
 The poller will trigger the pipeline when a file is added to the given bucket and folder.
 It only triggers on files, not folders.
 
-## Todo
-* To get latest revision it cycles all files to get the one with the latest modified date. Problematic for buckets with many files.
-* Implement pagination support in listObjects, by checking [isTruncated()](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/ObjectListing.html#isTruncated()).
+## Development
+
+Use the docker [gocd-dev](https://hub.docker.com/r/gocd/gocd-dev/) container and launch it using 
+`docker run -i -t -p 8153:8153 gocd/gocd-dev`.
+
+Build the project `mvn clean package` and use the command shown on the docker page to copy the jar to the GoCD server 
+docker container.
+
+You can then ssh into the container and inspect logs at `/var/log/go-server`.
+
+A simple way to add your AWS credentials during development is to add the following lines to the 
+`PackageRepositoryMaterial` class constructor:
+
+    public PackageRepositoryMaterial() {
+        configurationProvider = new PackageRepositoryConfigurationProvider();
+        packageRepositoryPoller = new PackageRepositoryPoller(configurationProvider, new AmazonS3Client(new AWSCredentials() {
+            @Override
+            public String getAWSAccessKeyId() {
+                return "<YOUR_AWS_ACCESS_KEY_ID>";
+            }
+
+            @Override
+            public String getAWSSecretKey() {
+                return "<YOUR_AWS_SECRET_KEY>";
+            }
+        }));
