@@ -1,3 +1,5 @@
+# Unmaintained, looking for ownership
+
 # gocd-s3-poller
 
 Plugin based on [JSON API](http://www.go.cd/documentation/developer/writing_go_plugins/package_material/json_message_based_package_material_extension.html)
